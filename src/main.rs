@@ -119,6 +119,16 @@ impl Vm {
                 }
                 None
             }
+            4 => {
+                let reg: usize = get_x(input).into();
+                let val = get_constant(input);
+
+                if self.registers[reg] != val {
+                    // skip the next instruction, so should we incrememnt program counter by 4..?
+                    return Some(self.program_counter + 4);
+                }
+                None
+            }
             _ => {
                 println!("code not implemented");
                 None
