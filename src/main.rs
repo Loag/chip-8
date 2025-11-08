@@ -107,7 +107,8 @@ impl Vm {
                 }
                 None
             }
-            1 => Some(get_address(input).into()),
+            1 => Some(get_address(input).into()),  // jump
+            2 => self.execute(get_address(input)), // call subroutine at address
             _ => {
                 println!("code not implemented");
                 None
