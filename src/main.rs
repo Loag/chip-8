@@ -138,6 +138,13 @@ impl Vm {
                 }
                 None
             }
+            6 => {
+                let reg: usize = get_x(input).into();
+                let val = get_constant(input);
+
+                self.registers[reg] = val;
+                None
+            }
             _ => {
                 println!("code not implemented");
                 None
