@@ -153,6 +153,13 @@ impl Vm {
 
                 None
             }
+            8 => {
+                let reg1: usize = get_x(input).into();
+                let reg2: usize = get_y(input).into();
+
+                self.registers[reg1] = self.registers[reg2];
+                None
+            }
             _ => {
                 println!("code not implemented");
                 None
