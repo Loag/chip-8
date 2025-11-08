@@ -109,6 +109,16 @@ impl Vm {
             }
             1 => Some(get_address(input).into()),  // jump
             2 => self.execute(get_address(input)), // call subroutine at address
+            3 => {
+                let reg: usize = get_x(input).into();
+                let val = get_constant(input);
+
+                if self.registers[reg] == val {
+                    // skip the next instruction, so should we incrememnt program counter by 4..?
+                    return Some(self.program_counter + 4);
+                }
+                None
+            }
             _ => {
                 println!("code not implemented");
                 None
