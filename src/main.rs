@@ -145,6 +145,14 @@ impl Vm {
                 self.registers[reg] = val;
                 None
             }
+            7 => {
+                let reg: usize = get_x(input).into();
+                let addr = get_constant(input);
+
+                self.registers[reg] = self.registers[reg] + addr; // what does this do if it overflows..?
+
+                None
+            }
             _ => {
                 println!("code not implemented");
                 None
