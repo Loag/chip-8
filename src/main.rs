@@ -129,6 +129,15 @@ impl Vm {
                 }
                 None
             }
+            5 => {
+                let reg1: usize = get_x(input).into();
+                let reg2: usize = get_y(input).into();
+
+                if self.registers[reg1] == self.registers[reg2] {
+                    return Some(self.program_counter + 4);
+                }
+                None
+            }
             _ => {
                 println!("code not implemented");
                 None
