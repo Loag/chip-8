@@ -73,13 +73,12 @@ impl Vm {
             // get the next instruction
             let op = self.get_op(self.program_counter);
 
-            self.execute(op); // execute should return an option? or a result? because some ops we need some value. like jump.
-                              // execute the instruction
+            let jump_address = self.execute(op);
 
             // check the timers here..?
 
             // update the program counter
-            self.update_program_counter(None); // TODO if we need to jump, set here or none
+            self.update_program_counter(jump_address);
         }
     }
 
@@ -97,7 +96,7 @@ impl Vm {
         ((ins1 as u16) << 8) | ins2 as u16
     }
 
-    fn execute(&mut self, input: u16) -> Option<u16> {
+    fn execute(&mut self, input: u16) -> Option<usize> {
         let code = get_op_code(input);
         match code {
             0 => {
@@ -108,6 +107,7 @@ impl Vm {
                 }
                 None
             }
+            1 => Some(get_address(input).into()),
             _ => {
                 println!("code not implemented");
                 None
@@ -150,5 +150,3 @@ fn get_x(input: u16) -> u8 {
 fn get_y(input: u16) -> u8 {
     (input & 0b0000000011110000).try_into().unwrap()
 }
-
-fn execute_call() {}
