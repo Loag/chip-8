@@ -47,6 +47,46 @@ impl Screen {
     }
 }
 
+#[repr(u8)]
+enum Key {
+    one = 0x1,
+    two = 0x2,
+    three = 0x3,
+    four = 0xc,
+    q = 0x4,
+    w = 0x5,
+    e = 0x6,
+    r = 0xd,
+    a = 0x7,
+    s = 0x8,
+    d = 0x9,
+    f = 0xe,
+    z = 0xa,
+    x = 0x0,
+    c = 0xb,
+    v = 0xf,
+}
+
+struct Input {
+    keys: Vec<bool>,
+}
+
+impl Input {
+    fn new() -> Input {
+        Input {
+            keys: vec![false; 16],
+        }
+    }
+
+    fn set(&mut self, i: usize) {
+        self.keys[i] = true;
+    }
+
+    fn is_set(&self, i: usize) -> bool {
+        self.keys[i]
+    }
+}
+
 struct Memory {
     slots: Vec<u8>,
 }
@@ -85,7 +125,9 @@ struct Vm {
     delay_timer: u8,
     sound_timer: u8,
     display: Screen,
+    skip: bool, // used for wait for key press so we can just skip execution until it is set
     cycle_count: u8, // use this for "entropy source"
+    input: Input,
 }
 
 impl Vm {
@@ -99,21 +141,27 @@ impl Vm {
             sound_timer: 0,
             display: Screen::new(), // where screen is 64 * 32
             cycle_count: 0,
+            skip: false,
+            input: Input::new(),
         }
     }
 
     // blocks forever
     fn start(&mut self) {
         loop {
-            // get the next instruction
-            let op = self.get_op(self.program_counter);
+            if !self.skip {
+                // skip waits for a key press
+                // get the next instruction
+                let op = self.get_op(self.program_counter);
 
-            let jump_address = self.execute(op);
+                let jump_address = self.execute(op);
+                self.update_program_counter(jump_address);
+            }
 
-            // check the timers here..?
+            // handle key pressing here..?
 
-            // update the program counter
-            self.update_program_counter(jump_address);
+            // check and handle timers here..?
+
             self.cycle_count.wrapping_add(1);
         }
     }
@@ -268,6 +316,26 @@ impl Vm {
 
                 None
             }
+            14 => {
+                let op = get_4_bit_constant(input);
+                let reg1: usize = get_x(input).into();
+                match op {
+                    1 => {
+                        if !self.input.is_set(self.registers[reg1].into()) {
+                            return Some(self.program_counter + 4);
+                        }
+                        None
+                    }
+                    14 => {
+                        if self.input.is_set(self.registers[reg1].into()) {
+                            return Some(self.program_counter + 4);
+                        }
+                        None
+                    }
+                    _ => None,
+                }
+            }
+            15 => {}
             _ => {
                 println!("code not implemented");
                 None
