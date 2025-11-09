@@ -13,8 +13,37 @@ impl Screen {
         self.pixels = vec![vec![0x00; 32]; 64]
     }
 
-    fn set(&mut self, value: u8, x: usize, y: usize) {
-        self.pixels[y][x] = value
+    fn set(&mut self, value: u8, x: usize, y: usize) -> bool {
+        let updated = if self.pixels[y][x] != value {
+            true
+        } else {
+            false
+        };
+        self.pixels[y][x] = value;
+        updated
+    }
+
+    // return whether or not all of the bits were set to set VF
+    fn draw_line(&mut self, value: u8, x: usize, start_y: usize) -> bool {
+        let mut all_set: Vec<bool> = vec![];
+        for i in 0..7 {
+            let val = value; // TODO get bit values here
+            let was_updated = self.set(val, x, start_y + i);
+            all_set.push(was_updated);
+        }
+
+        all_set.iter().fold(true, |acc, curr| acc & curr)
+    }
+
+    fn draw(&mut self, vals: Vec<u8>, x: usize, start_y: usize) -> bool {
+        let mut all_set: Vec<bool> = vec![];
+        for i in 0..vals.len() {
+            let val = vals[i];
+            let set = self.draw_line(val, x, start_y + i);
+            all_set.push(set);
+        }
+
+        all_set.iter().fold(true, |acc, curr| acc & curr)
     }
 }
 
@@ -33,6 +62,10 @@ impl Memory {
             return self.slots[address];
         }
         panic!("tried to read memory out of bounds")
+    }
+
+    fn get_block(&self, address: usize, length: usize) -> Vec<u8> {
+        self.slots[address..(address + length)].into()
     }
 
     fn set(&mut self, address: usize, value: u8) {
@@ -218,6 +251,23 @@ impl Vm {
                 self.registers[reg1] = lsfr(self.cycle_count) & con;
                 None
             }
+            13 => {
+                let reg1: usize = get_x(input).into();
+                let reg2: usize = get_x(input).into();
+                let con = get_constant(input);
+
+                // get block of memory from i to i + con
+                let res = self.display.draw(
+                    self.memory
+                        .get_block(self.address_register.into(), con.into()),
+                    reg1,
+                    reg2,
+                );
+
+                self.registers[15] = res.into();
+
+                None
+            }
             _ => {
                 println!("code not implemented");
                 None
@@ -265,3 +315,7 @@ fn lsfr(val: u8) -> u8 {
     let bit = ((val >> 7) ^ (val >> 5) ^ (val >> 4) ^ (val >> 3)) & 1;
     (val << 1) | bit
 }
+
+// for n, beginning at address register, read bytes from memory.
+// get the bits of the piece of memory and draw bits to screen starting at location x, y, going down
+fn draw() {}
