@@ -157,7 +157,42 @@ impl Vm {
                 let reg1: usize = get_x(input).into();
                 let reg2: usize = get_y(input).into();
 
-                self.registers[reg1] = self.registers[reg2];
+                let case = get_4_bit_constant(input);
+                match case {
+                    0 => self.registers[reg1] = self.registers[reg2],
+                    1 => self.registers[reg1] = self.registers[reg1] | self.registers[reg2],
+                    2 => self.registers[reg1] = self.registers[reg1] & self.registers[reg2],
+                    3 => self.registers[reg1] = self.registers[reg1] ^ self.registers[reg2],
+                    4 => {
+                        let (val, carry) =
+                            self.registers[reg1].overflowing_add(self.registers[reg2]);
+                        self.registers[reg1] = val;
+                        self.registers[15] = carry.into();
+                    }
+                    5 => {
+                        let (val, carry) =
+                            self.registers[reg1].overflowing_sub(self.registers[reg2]);
+                        self.registers[reg1] = val;
+                        self.registers[15] = (!carry).into(); // carry reg is set to 0 in chip-8 if it is an underflow
+                    }
+                    6 => {
+                        let lsb = self.registers[reg1] & 0b00000001;
+                        self.registers[reg1] = self.registers[reg1] >> 1;
+                        self.registers[15] = lsb;
+                    }
+                    7 => {
+                        let (val, carry) =
+                            self.registers[reg2].overflowing_sub(self.registers[reg1]);
+                        self.registers[reg2] = val;
+                        self.registers[15] = (!carry).into(); // carry reg is set to 0 in chip-8 if it is an underflow
+                    }
+                    8 => {
+                        let msb = self.registers[reg1] & 0b10000000;
+                        self.registers[reg1] = self.registers[reg1] << 1;
+                        self.registers[15] = msb;
+                    }
+                    _ => (),
+                };
                 None
             }
             _ => {
