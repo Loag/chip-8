@@ -47,26 +47,6 @@ impl Screen {
     }
 }
 
-#[repr(u8)]
-enum Key {
-    one = 0x1,
-    two = 0x2,
-    three = 0x3,
-    four = 0xc,
-    q = 0x4,
-    w = 0x5,
-    e = 0x6,
-    r = 0xd,
-    a = 0x7,
-    s = 0x8,
-    d = 0x9,
-    f = 0xe,
-    z = 0xa,
-    x = 0x0,
-    c = 0xb,
-    v = 0xf,
-}
-
 struct Input {
     keys: Vec<bool>,
 }
@@ -84,6 +64,25 @@ impl Input {
 
     fn is_set(&self, i: usize) -> bool {
         self.keys[i]
+    }
+
+    fn any_pressed(&self) -> bool {
+        for i in self.keys.iter() {
+            if *i == true {
+                return true;
+            }
+        }
+        false
+    }
+
+    // naive scan for first key pressed
+    fn get_key_pressed(&self) -> u8 {
+        for i in 0..self.keys.len() {
+            if self.keys[i] != false {
+                return i as u8;
+            }
+        }
+        0
     }
 }
 
@@ -125,7 +124,6 @@ struct Vm {
     delay_timer: u8,
     sound_timer: u8,
     display: Screen,
-    skip: bool, // used for wait for key press so we can just skip execution until it is set
     cycle_count: u8, // use this for "entropy source"
     input: Input,
 }
@@ -141,7 +139,6 @@ impl Vm {
             sound_timer: 0,
             display: Screen::new(), // where screen is 64 * 32
             cycle_count: 0,
-            skip: false,
             input: Input::new(),
         }
     }
@@ -149,20 +146,17 @@ impl Vm {
     // blocks forever
     fn start(&mut self) {
         loop {
-            if !self.skip {
-                // skip waits for a key press
-                // get the next instruction
-                let op = self.get_op(self.program_counter);
+            // check if there is a key pressed?
+            let op = self.get_op(self.program_counter);
 
-                let jump_address = self.execute(op);
-                self.update_program_counter(jump_address);
-            }
+            let jump_address = self.execute(op);
+            self.update_program_counter(jump_address);
 
             // handle key pressing here..?
 
             // check and handle timers here..?
 
-            self.cycle_count.wrapping_add(1);
+            self.cycle_count = self.cycle_count.wrapping_add(1);
         }
     }
 
@@ -335,7 +329,41 @@ impl Vm {
                     _ => None,
                 }
             }
-            15 => {}
+            15 => {
+                let op = get_constant(input);
+                match op {
+                    7 => {
+                        let reg1: usize = get_x(input).into();
+                        self.registers[reg1] = self.delay_timer;
+                    }
+                    10 => {
+                        // check if a key is pressed, if not set the program counter back to where we are so we essentially loop until there is a key
+                        let key_pressed = self.input.any_pressed();
+                        if key_pressed {
+                            let reg1: usize = get_x(input).into();
+                            let k = self.input.get_key_pressed();
+                            self.registers[reg1] = k;
+                        } else {
+                            return Some(self.program_counter);
+                        }
+                    }
+                    21 => {
+                        let reg1 = get_x(input);
+                        self.delay_timer = reg1;
+                    }
+                    24 => {
+                        let reg1 = get_x(input);
+                        self.sound_timer = reg1;
+                    }
+                    30 => {}
+                    41 => {}
+                    51 => {}
+                    85 => {}
+                    101 => {}
+                    _ => {}
+                }
+                None
+            }
             _ => {
                 println!("code not implemented");
                 None
