@@ -52,6 +52,7 @@ struct Vm {
     delay_timer: u8,
     sound_timer: u8,
     display: Screen,
+    cycle_count: u8, // use this for "entropy source"
 }
 
 impl Vm {
@@ -64,6 +65,7 @@ impl Vm {
             delay_timer: 0,
             sound_timer: 0,
             display: Screen::new(), // where screen is 64 * 32
+            cycle_count: 0,
         }
     }
 
@@ -79,6 +81,7 @@ impl Vm {
 
             // update the program counter
             self.update_program_counter(jump_address);
+            self.cycle_count.wrapping_add(1);
         }
     }
 
@@ -204,6 +207,17 @@ impl Vm {
                 }
                 None
             }
+            10 => {
+                self.address_register = get_address(input);
+                None
+            }
+            11 => Some((self.address_register + (self.registers[0] as u16)).into()),
+            12 => {
+                let reg1: usize = get_x(input).into();
+                let con = get_constant(input);
+                self.registers[reg1] = lsfr(self.cycle_count) & con;
+                None
+            }
             _ => {
                 println!("code not implemented");
                 None
@@ -245,4 +259,9 @@ fn get_x(input: u16) -> u8 {
 
 fn get_y(input: u16) -> u8 {
     (input & 0b0000000011110000).try_into().unwrap()
+}
+
+fn lsfr(val: u8) -> u8 {
+    let bit = ((val >> 7) ^ (val >> 5) ^ (val >> 4) ^ (val >> 3)) & 1;
+    (val << 1) | bit
 }
