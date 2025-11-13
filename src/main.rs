@@ -359,7 +359,12 @@ impl Vm {
                         let reg1 = get_x(input);
                         self.address_register = self.address_register + reg1 as u16;
                     }
-                    41 => {}
+                    41 => {
+                        // sprite base is 0x00
+                        let reg1: usize = get_x(input).into();
+                        let val = self.registers[reg1] & 0b00001111;
+                        self.address_register = 0x00 + val as u16;
+                    }
                     51 => {}
                     85 => {
                         for i in 0..self.registers.len() {
