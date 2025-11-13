@@ -361,8 +361,17 @@ impl Vm {
                     }
                     41 => {}
                     51 => {}
-                    85 => {}
-                    101 => {}
+                    85 => {
+                        for i in 0..self.registers.len() {
+                            self.memory
+                                .set(self.address_register as usize + i, self.registers[i]);
+                        }
+                    }
+                    101 => {
+                        for i in 0..self.registers.len() {
+                            self.registers[i] = self.memory.get(self.address_register as usize + i);
+                        }
+                    }
                     _ => {}
                 }
                 None
