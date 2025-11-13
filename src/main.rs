@@ -355,7 +355,10 @@ impl Vm {
                         let reg1 = get_x(input);
                         self.sound_timer = reg1;
                     }
-                    30 => {}
+                    30 => {
+                        let reg1 = get_x(input);
+                        self.address_register = self.address_register + reg1 as u16;
+                    }
                     41 => {}
                     51 => {}
                     85 => {}
