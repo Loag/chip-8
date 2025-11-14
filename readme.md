@@ -8,4 +8,4 @@ implement chip-8 without ai
 ./chip-8 --rom_to_run.ch8
 ```
 
-[logo](screenshot.png)
+![logo](./screenshot.png)
