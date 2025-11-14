@@ -1,25 +1,25 @@
 use std::{fs::File, io::Read, thread::sleep, time::Duration};
 
 struct Screen {
-    pixels: Vec<Vec<u8>>,
+    pixels: Vec<Vec<bool>>,
 }
 
 impl Screen {
     fn new() -> Screen {
         Screen {
-            pixels: vec![vec![0x00; 32]; 64],
+            pixels: vec![vec![false; 64]; 32],
         }
     }
 
     fn clear(&mut self) {
         for yi in 0..self.pixels.len() {
             for xi in 0..self.pixels[yi].len() {
-                self.pixels[yi][xi] = 0x00;
+                self.pixels[yi][xi] = false;
             }
         }
     }
 
-    fn set(&mut self, value: u8, x: usize, y: usize) -> bool {
+    fn set(&mut self, value: bool, x: usize, y: usize) -> bool {
         let updated = if self.pixels[y][x] != value {
             true
         } else {
@@ -32,9 +32,9 @@ impl Screen {
     // return whether or not all of the bits were set to set VF
     fn draw_line(&mut self, value: u8, x: usize, start_y: usize) -> bool {
         let mut all_set: Vec<bool> = vec![];
-        for i in 0..7 {
-            let val = value; // TODO get bit values here
-            let was_updated = self.set(val, x, start_y + i);
+        for i in 0..8 {
+            let is_set = (value & (1 << i)) != 0;
+            let was_updated = self.set(is_set, x + (8 - i), start_y);
             all_set.push(was_updated);
         }
 
@@ -52,21 +52,21 @@ impl Screen {
         all_set.iter().fold(true, |acc, curr| acc & curr)
     }
 
-    fn render(&mut self) {
+    fn render(&self) {
         let mut out = String::new();
-        for i in self.pixels.clone() {
-            for j in i {
-                if j == 0 {
-                    out.push(' ');
-                } else {
+
+        for yi in 0..self.pixels.len() {
+            for xi in 0..self.pixels[yi].len() {
+                if self.pixels[yi][xi] {
                     out.push('█');
+                } else {
+                    out.push(' ');
                 }
             }
-            //break;
-            // out.push('\n');
+            out.push('\n');
         }
-        print!("\x1b[2J\x1b[H");
-        print!("{}", out);
+
+        println!("{}", out);
     }
 }
 
@@ -195,20 +195,21 @@ impl Vm {
 
     // blocks forever
     pub fn start(&mut self) {
-        self.memory.dump_memory();
-        // loop {
-        //     // check if there is a key pressed?
-        //     let op = self.get_op(self.program_counter);
-        //     let jump_address = self.execute(op);
-        //     self.update_program_counter(jump_address);
+        // self.memory.dump_memory();
+        loop {
+            // check if there is a key pressed?
+            let op = self.get_op(self.program_counter);
+            let jump_address = self.execute(op);
+            self.update_program_counter(jump_address);
 
-        //     // handle key pressing here..?
+            // handle key pressing here..?
 
-        //     // check and handle timers here..?
+            // check and handle timers here..?
 
-        //     self.display.render();
-        //     self.cycle_count = self.cycle_count.wrapping_add(1);
-        // }
+            self.display.render();
+            self.cycle_count = self.cycle_count.wrapping_add(1);
+            sleep(Duration::new(1, 0));
+        }
     }
 
     // take a path to a program and put it in memory slots starting at 0x200
@@ -356,15 +357,17 @@ impl Vm {
             13 => {
                 let reg1: usize = get_x(input).into();
                 let reg2: usize = get_y(input).into();
-                let con = get_constant(input);
 
+                let x: usize = self.registers[reg1].into();
+                let y: usize = self.registers[reg2].into();
+
+                let con = get_4_bit_constant(input);
+
+                let block = self
+                    .memory
+                    .get_block(self.address_register.into(), con.into());
                 // get block of memory from i to i + con
-                let res: bool = self.display.draw(
-                    self.memory
-                        .get_block(self.address_register.into(), con.into()),
-                    reg1,
-                    reg2,
-                );
+                let res: bool = self.display.draw(block.clone(), x, y);
 
                 self.registers[15] = res.into();
 
@@ -503,6 +506,13 @@ mod test {
         let out = get_address(val);
 
         assert_eq!(out, 0b0000111111111111);
+    }
+
+    #[test]
+    fn test_get_address_2() {
+        let val = 0xA25F;
+        let out = get_address(val);
+        assert_eq!(out, 0x25F)
     }
 
     #[test]
