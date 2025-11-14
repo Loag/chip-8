@@ -365,7 +365,16 @@ impl Vm {
                         let val = self.registers[reg1] & 0b00001111;
                         self.address_register = 0x00 + val as u16;
                     }
-                    51 => {}
+                    51 => {
+                        let reg1: usize = get_x(input).into();
+                        let val = self.registers[reg1];
+
+                        self.memory.set(self.address_register as usize, val / 100);
+                        self.memory
+                            .set((self.address_register + 1) as usize, (val % 100) / 10);
+                        self.memory
+                            .set((self.address_register + 2) as usize, val % 10);
+                    }
                     85 => {
                         for i in 0..self.registers.len() {
                             self.memory
@@ -400,11 +409,11 @@ fn main() {
 
 // input is 1 byte and we want to get the first nibble
 fn get_op_code(input: u16) -> u8 {
-    (input & 0b1111000000000000).try_into().unwrap() // this will give us the upper 4 bits
+    ((input & 0b1111000000000000) >> 12).try_into().unwrap() // this will give us the upper 4 bits
 }
 
 fn get_address(input: u16) -> u16 {
-    input & 0b00001111111111111111 // bottom 12 bits
+    input & 0b0000111111111111 // bottom 12 bits
 }
 
 // this can also be used for the ops where the bottom byte contains an "id" for example all of the different operations for the number 8 op
@@ -417,11 +426,11 @@ fn get_4_bit_constant(input: u16) -> u8 {
 }
 
 fn get_x(input: u16) -> u8 {
-    (input & 0b0000111100000000).try_into().unwrap()
+    ((input & 0b0000111100000000) >> 8).try_into().unwrap()
 }
 
 fn get_y(input: u16) -> u8 {
-    (input & 0b0000000011110000).try_into().unwrap()
+    ((input & 0b0000000011110000) >> 4).try_into().unwrap()
 }
 
 fn lsfr(val: u8) -> u8 {
@@ -432,3 +441,56 @@ fn lsfr(val: u8) -> u8 {
 // for n, beginning at address register, read bytes from memory.
 // get the bits of the piece of memory and draw bits to screen starting at location x, y, going down
 fn draw() {}
+
+#[cfg(test)]
+mod test {
+    use super::*; // bring items from parent module into scope
+
+    #[test]
+    fn test_get_address() {
+        let val = 0b1111111111111111;
+        let out = get_address(val);
+
+        assert_eq!(out, 0b0000111111111111);
+    }
+
+    #[test]
+    fn test_get_op_code() {
+        let val = 0b1111111111111111;
+        let out = get_op_code(val);
+
+        assert_eq!(out, 0b00001111);
+    }
+
+    #[test]
+    fn test_get_constant() {
+        let val = 0b1111111111111111;
+        let out = get_constant(val);
+
+        assert_eq!(out, 0b11111111);
+    }
+
+    #[test]
+    fn test_get_4_bit_constant() {
+        let val = 0b1111111111111111;
+        let out = get_4_bit_constant(val);
+
+        assert_eq!(out, 0b00001111);
+    }
+
+    #[test]
+    fn test_get_x() {
+        let val = 0b1010101010101010;
+        let out = get_x(val);
+
+        assert_eq!(out, 0b00001010);
+    }
+
+    #[test]
+    fn test_get_y() {
+        let val = 0b1010101010101010;
+        let out = get_y(val);
+
+        assert_eq!(out, 0b00001010);
+    }
+}
