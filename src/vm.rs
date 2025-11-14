@@ -1,4 +1,4 @@
-use std::{fs::File, io::Read, thread::sleep, time::Duration};
+use std::{fs::File, io::Read};
 
 struct Screen {
     pixels: Vec<Vec<bool>>,
@@ -53,6 +53,7 @@ impl Screen {
     }
 
     fn render(&self) {
+        print!("\x1b[2J\x1b[H");
         let mut out = String::new();
 
         for yi in 0..self.pixels.len() {
@@ -193,7 +194,6 @@ impl Vm {
         }
     }
 
-    // blocks forever
     pub fn start(&mut self) {
         // self.memory.dump_memory();
         loop {
@@ -208,7 +208,6 @@ impl Vm {
 
             self.display.render();
             self.cycle_count = self.cycle_count.wrapping_add(1);
-            sleep(Duration::new(1, 0));
         }
     }
 
