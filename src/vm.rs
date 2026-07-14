@@ -5,6 +5,8 @@ struct Screen {
 }
 
 impl Screen {
+    const CLEAR_TERMINAL: &'static str = "\x1b[2J\x1b[H";
+
     fn new() -> Screen {
         Screen {
             pixels: vec![vec![false; 64]; 32],
@@ -53,7 +55,7 @@ impl Screen {
     }
 
     fn render(&self) {
-        print!("\x1b[2J\x1b[H");
+        print!("{}", Self::CLEAR_TERMINAL);
         let mut out = String::new();
 
         for yi in 0..self.pixels.len() {
@@ -115,16 +117,19 @@ struct Memory {
 }
 
 impl Memory {
+    const MEMORY_SIZE: usize = 4096;
+
     fn new() -> Memory {
         Memory {
-            slots: vec![0x00; 4096],
+            slots: vec![0x00; Self::MEMORY_SIZE],
         }
     }
+
     fn get(&self, address: usize) -> u8 {
-        if address <= 4096 {
+        if address <= Self::MEMORY_SIZE {
             return self.slots[address];
         }
-        panic!("tried to read memory out of bounds")
+        panic!("tried to read memory out of bounds. max address = 4096")
     }
 
     fn get_block(&self, address: usize, length: usize) -> Vec<u8> {
@@ -132,16 +137,16 @@ impl Memory {
     }
 
     fn set(&mut self, address: usize, value: u8) {
-        if address <= 4096 {
+        if address <= Self::MEMORY_SIZE {
             self.slots[address] = value
         } else {
-            panic!("tried to set a memory segment out of bounds.")
+            panic!("tried to set a memory segment out of bounds. max address = 4096")
         }
     }
 
     fn dump_memory(&self) {
         let mut counter = 16;
-        for i in 0x200..self.slots.len() {
+        for i in 0..self.slots.len() {
             counter -= 1;
             let hex_string = hex::encode(vec![self.slots[i]]);
             print!("{} ", hex_string);
@@ -166,25 +171,21 @@ pub struct Vm {
 }
 
 impl Vm {
+    const PROGRAM_COUNTER_START_POS: usize = 0x200; // 512
+
     pub fn new() -> Vm {
-        Vm {
-            registers: vec![0x00; 16],
-            address_register: 0x000,
-            program_counter: 0x200,
-            memory: Memory::new(),
-            delay_timer: 0,
-            sound_timer: 0,
-            display: Screen::new(), // where screen is 64 * 32
-            cycle_count: 0,
-            input: Input::new(),
-        }
+        Self::vm(Memory::new())
     }
 
-    fn new_with_memory(mem: Memory) -> Vm {
+    pub fn new_with_memory(mem: Memory) -> Vm {
+        Self::vm(mem)
+    }
+
+    fn vm(mem: Memory) -> Vm {
         Vm {
             registers: vec![0x00; 16],
             address_register: 0x000,
-            program_counter: 0x200,
+            program_counter: Self::PROGRAM_COUNTER_START_POS,
             memory: mem,
             delay_timer: 0,
             sound_timer: 0,
@@ -195,7 +196,11 @@ impl Vm {
     }
 
     pub fn start(&mut self) {
-        // self.memory.dump_memory();
+        #[cfg(debug_assertions)]
+        {
+            self.memory.dump_memory();
+        }
+
         loop {
             // check if there is a key pressed?
             let op = self.get_op(self.program_counter);
@@ -239,7 +244,7 @@ impl Vm {
         match code {
             0 => {
                 match input {
-                    0x00E0 => self.clear_display(), // this is clear the display
+                    0x00E0 => self.display.clear(), // this is clear the display
                     0x00EE => {} // this is return, so we should pop the stack and return that val to set program counter with
                     _ => println!("unknown op in range 0: {}", input),
                 }
@@ -453,14 +458,10 @@ impl Vm {
                 None
             }
             _ => {
-                println!("code not implemented");
+                println!("op code not implemented");
                 None
             }
         }
-    }
-
-    fn clear_display(&mut self) {
-        self.display.clear()
     }
 }
 
